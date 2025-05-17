@@ -11,19 +11,35 @@ app.use(express.json());
 
 // Dados fixos do PIX conforme informado pelo usuário
 const PIX_DATA = {
-  name: "agleia luisa setter",
-  city: "praia grande",
-  key: "55733148000127", // CNPJ como chave PIX
+  name: "samuel nasser",
+  city: "sao bernardo do campo",
+  key: "32147445000195", // CNPJ como chave PIX
   transactionId: "celebra" // txid informado pelo usuário
 };
 
 // Rota principal para geração do PIX
 app.post('/api/gerar-pix', (req, res) => {
   try {
-    // Obtém o valor da transação do corpo da requisição
-    const { valor } = req.body;
+    // Verifica se o valor está no formato root ou direto
+    let valor;
     
-    if (!valor || isNaN(parseFloat(valor))) {
+    if (req.body.root && req.body.root.valor) {
+      // Formato do BotConversa: {"root": {"valor": "100"}}
+      valor = req.body.root.valor;
+    } else if (req.body.valor) {
+      // Formato direto: {"valor": "100"}
+      valor = req.body.valor;
+    } else {
+      return res.status(400).json({ 
+        erro: true, 
+        mensagem: 'Valor não encontrado na requisição.' 
+      });
+    }
+    
+    // Converte para número se for string
+    const valorNumerico = parseFloat(valor);
+    
+    if (isNaN(valorNumerico)) {
       return res.status(400).json({ 
         erro: true, 
         mensagem: 'Valor inválido. Forneça um valor numérico válido.' 
@@ -33,7 +49,7 @@ app.post('/api/gerar-pix', (req, res) => {
     // Cria o payload do PIX com os dados fixos e o valor variável
     const pixData = {
       ...PIX_DATA,
-      amount: parseFloat(valor)
+      amount: valorNumerico
     };
 
     // Gera o código PIX copia e cola
@@ -59,7 +75,10 @@ app.get('/', (req, res) => {
     endpoints: {
       '/api/gerar-pix': {
         method: 'POST',
-        body: { valor: 'número (ex: 100.50)' },
+        body: { 
+          'formato1': { 'valor': 'número (ex: 100.50)' },
+          'formato2': { 'root': { 'valor': 'número (ex: 100.50)' } }
+        },
         response: { pixCopiaCola: 'string com código PIX copia e cola' }
       }
     }
